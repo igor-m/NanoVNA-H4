@@ -68,7 +68,7 @@ static volatile vna_shellcmd_t  shell_function = 0;
 // Enable color command, allow change config color for traces, grid, menu
 #define ENABLE_COLOR_COMMAND
 // Enable I2C command for send data to AIC3204, used for debug
-//#define ENABLE_I2C_COMMAND
+#define ENABLE_I2C_COMMAND
 // Enable LCD command for send data to LCD screen, used for debug
 //#define ENABLE_LCD_COMMAND
 // Enable output debug data on screen on hard fault
@@ -78,13 +78,13 @@ static volatile vna_shellcmd_t  shell_function = 0;
 // Enable stat command, used for debug
 //#define ENABLE_STAT_COMMAND
 // Enable gain command, used for debug
-//#define ENABLE_GAIN_COMMAND
+#define ENABLE_GAIN_COMMAND
 // Enable port command, used for debug
 //#define ENABLE_PORT_COMMAND
 // Enable si5351 timing command, used for debug
-//#define ENABLE_SI5351_TIMINGS
+#define ENABLE_SI5351_TIMINGS
 // Enable i2c timing command, used for debug
-//#define ENABLE_I2C_TIMINGS
+#define ENABLE_I2C_TIMINGS
 
 static void apply_CH0_error_term_at(int i);
 static void apply_CH1_error_term_at(int i);
@@ -119,7 +119,7 @@ const char *info_about[]={
   "Board: " BOARD_NAME,
   "2016-2020 Copyright @edy555",
   "Licensed under GPL. See: https://github.com/ttrftech/NanoVNA",
-  "Version: " VERSION,
+  "Version: 1.0.13 beta New UI, 12k offset, 768k ADC, compiled by DiSlord",// VERSION,
   "Build Time: " __DATE__ " - " __TIME__,
   "Kernel: " CH_KERNEL_VERSION,
   "Compiler: " PORT_COMPILER_NAME,
@@ -834,7 +834,7 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
     return false;
   // Blink LED while scanning
   palClearPad(GPIOC, GPIOC_LED);
-//  START_PROFILE;
+  START_PROFILE;
   // Wait some time for stable power
   int st_delay = DELAY_SWEEP_START;
   for (; p_sweep < sweep_points; p_sweep++) {
@@ -879,7 +879,7 @@ bool sweep(bool break_on_operation, uint16_t sweep_mode)
       if (sweep_mode & SWEEP_CH1_MEASURE) apply_CH1_error_term_at(start_sweep);
     }
   }
-//  STOP_PROFILE;
+  STOP_PROFILE;
   // blink LED while scanning
   palSetPad(GPIOC, GPIOC_LED);
   return p_sweep == sweep_points;
@@ -892,7 +892,7 @@ static const uint8_t gain_table[][2] = {
 #endif
     {  5,  5 },     // 1st:    0 ~  300MHz
     { 50, 50 },     // 2nd:  300 ~  900MHz
-    { 80, 80 },     // 3th:  900 ~ 1500MHz
+    { 75, 75 },     // 3th:  900 ~ 1500MHz
     { 85, 85 },     // 4th: 1500 ~ 2100MHz
     { 95, 95 },     // 5th: 2100 ~ 2700MHz
 };

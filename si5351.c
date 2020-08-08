@@ -42,9 +42,9 @@ static int32_t  current_offset = FREQUENCY_OFFSET;
 static uint8_t  clk_cache[3] = {0, 0, 0};
 
 // Generator ready delays, values in x100 us
-#if 0
-//uint16_t timings[16]={  3,  3, 10, 10, 0, 0, 30,  3, 25}; // For H  device timings
-  uint16_t timings[16]={  2,  2, 10, 10, 0, 0, 30,  3, 25}; // For H4 device timings
+#if 1
+//uint16_t timings[16]={  3,  3, 10, 10, 0, 0, 30,  4, 25}; // For H  device timings
+  uint16_t timings[16]={  3,  3, 10, 10, 0, 0, 30,  4, 25}; // For H4 device timings
 void si5351_set_timing(int i, int v) {timings[i]=v;}
 #define DELAY_BAND_1_2           timings[0]   // Delay for bands
 #define DELAY_BAND_3_4           timings[1]   // Delay for bands
@@ -57,8 +57,8 @@ void si5351_set_timing(int i, int v) {timings[i]=v;}
 //#define DELAY_SWEEP_START      timings[8]   // defined in main.c delay at sweep start
 
 #else
-#define DELAY_BAND_1_2           2    // Delay for bands 1-2
-#define DELAY_BAND_3_4           2    // Delay for bands 3-4
+#define DELAY_BAND_1_2           3    // Delay for bands 1-2
+#define DELAY_BAND_3_4           3    // Delay for bands 3-4
 #define DELAY_BANDCHANGE_1_2    10    // Band changes need set additional delay after reset PLL
 #define DELAY_BANDCHANGE_3_4    10    // Band changes need set additional delay after reset PLL
 // Delay after set new PLL values, and send reset
@@ -118,7 +118,7 @@ si5351_write(uint8_t reg, uint8_t dat)
 const uint8_t si5351_configs[] = {
   2, SI5351_REG_3_OUTPUT_ENABLE_CONTROL, 0xff,
   4, SI5351_REG_16_CLK0_CONTROL, SI5351_CLK_POWERDOWN, SI5351_CLK_POWERDOWN, SI5351_CLK_POWERDOWN,
-  2, SI5351_REG_183_CRYSTAL_LOAD, SI5351_CRYSTAL_LOAD_6PF|(0<<3)|(0<<0),
+  2, SI5351_REG_183_CRYSTAL_LOAD, SI5351_CRYSTAL_LOAD__PF|(0<<3)|(0<<0),
 // All of this init code run late on sweep
 #if 0
   // setup PLL (26MHz * 32 = 832MHz, 32/2-2=14)
@@ -397,12 +397,12 @@ si5351_get_harmonic_lvl(uint32_t f){
   return lvl < MAX_HARMONIC ? lvl : (MAX_HARMONIC-1);
 }
 
-static const uint8_t h_mult[][2] ={
-  {1, 1}, // f < threshold (           f <  300MHz)
-  {3, 5}, // f < threshold ( 300MHz <= f <  900MHz)
-  {5, 7}, // f < threshold ( 900MHz <= f < 1500MHz)
-  {7, 9}, // f < threshold (1500MHz <= f < 2100MHz)
-  {9,11}  // f < threshold (2100MHz <= f < 2700MHz)
+static const uint16_t h_mult[][3] ={
+  {1, 1,      1}, // f < threshold (           f <  300MHz)
+  {3, 5, 4*3* 5}, // f < threshold ( 300MHz <= f <  900MHz)
+  {5, 7, 4*5* 7}, // f < threshold ( 900MHz <= f < 1500MHz)
+  {7, 9, 4*7* 9}, // f < threshold (1500MHz <= f < 2100MHz)
+  {9,11, 4*9*11}  // f < threshold (2100MHz <= f < 2700MHz)
 };
 
 /*
@@ -417,7 +417,6 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
 {
   uint8_t band;
   int delay;
-  uint32_t ofreq = freq + current_offset;
 
   uint32_t rdiv = SI5351_R_DIV_1;
   uint32_t fdiv, pll_n;
@@ -429,6 +428,11 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
   uint32_t harmonic = si5351_get_harmonic_lvl(freq);
   uint32_t mul  = h_mult[harmonic][0];
   uint32_t omul = h_mult[harmonic][1];
+  uint32_t align = h_mult[harmonic][2];
+  // Use 2 harmonic for 300-540M range
+//  if (omul == 5 && freq < 540000000) omul = 4;
+  // Use main freq align for better output
+  if (align>1) {freq/=align; freq*=align;}
 #else
   uint32_t mul = 1, omul = 1;
   if (freq >= config.harmonic_freq_threshold * 7U) {
@@ -447,6 +451,8 @@ si5351_set_frequency(uint32_t freq, uint8_t drive_strength)
 #endif
   if (freq == current_freq)
     return 0;
+
+  uint32_t ofreq = freq + current_offset;
   // Select optimal band for prepared freq
   if (freq <  10000U) {
      rdiv = SI5351_R_DIV_128;
